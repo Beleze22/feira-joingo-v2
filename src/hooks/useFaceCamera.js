@@ -9,10 +9,6 @@ const DETECTION_OPTIONS = new faceapi.TinyFaceDetectorOptions({
 
 let modelsLoaded = false;
 
-const IS_IOS =
-  /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-
 async function ensureModels(onStatus) {
   if (modelsLoaded) return;
   onStatus("Carregando detector facial...");
@@ -24,38 +20,19 @@ async function ensureModels(onStatus) {
   modelsLoaded = true;
 }
 
-// Fallback progressivo para Safari/iOS
-async function requestCamera() {
-  try {
-    return await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: "user" },
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-      },
-      audio: false,
-    });
-  } catch (_) {}
-  try {
-    return await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "user" },
-      audio: false,
-    });
-  } catch (_) {}
-  return navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-}
-
 export function useFaceCamera() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const captureRef = useRef(null);
   const intervalRef = useRef(null);
 
+  // Passo 1: Criamos uma nova referência para guardar a conexão da câmera
+  const streamRef = useRef(null);
+
   const [modelStatus, setModelStatus] = useState("Iniciando...");
   const [modelsReady, setModelsReady] = useState(false);
   const [faceDetected, setFaceDetected] = useState(false);
   const [streamReady, setStreamReady] = useState(false);
-  const [cameraError, setCameraError] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,42 +44,34 @@ export function useFaceCamera() {
         setModelsReady(true);
         setModelStatus("Iniciando câmera...");
 
-        const stream = await requestCamera();
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: "user",
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+          },
+          audio: false,
+        });
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
 
+        // Passo 2: Guardamos a conexão da câmera recém-criada na nossa variável segura
+        streamRef.current = stream;
+
         const video = videoRef.current;
         video.srcObject = stream;
-        // iOS Safari exige atributos via JS além do JSX
-        video.setAttribute("autoplay", "");
-        video.setAttribute("muted", "");
-        video.setAttribute("playsinline", "");
-        video.muted = true;
-
-        await new Promise((resolve) => {
-          video.onloadedmetadata = resolve;
-          setTimeout(resolve, 3000); // timeout de segurança para iOS
+        await new Promise((r) => {
+          video.onloadedmetadata = r;
         });
         if (cancelled) return;
-
-        try {
-          await video.play();
-        } catch (_) {}
-
+        await video.play();
         setStreamReady(true);
         setModelStatus("Pronto");
         startLoop();
       } catch (err) {
-        const msg =
-          err.name === "NotAllowedError"
-            ? "Permissão de câmera negada. No iPad: Ajustes → Safari → Câmera → Permitir."
-            : err.name === "NotFoundError"
-              ? "Nenhuma câmera encontrada."
-              : "Erro ao iniciar câmera: " + err.message;
-        setModelStatus(msg);
-        setCameraError(msg);
+        setModelStatus("Erro: " + err.message);
       }
     }
 
@@ -124,25 +93,26 @@ export function useFaceCamera() {
         if (det) {
           setFaceDetected(true);
           const { x, y, width, height } = det.box;
-          // const mx = canvas.width - x - width; // espelha o box
-          // Retângulo principal
+          // const mx = canvas.width - x - width;
           ctx.strokeStyle = "#7c3aed";
           ctx.lineWidth = 2;
-          ctx.strokeRect(x, y, width, height);
-          // Cantos decorativos
-          const len = 18;
+          ctx.beginPath();
+          ctx.rect(x, y, width, height);
+          ctx.stroke();
+
+          const len = 16;
           ctx.strokeStyle = "#a78bfa";
           ctx.lineWidth = 3;
           [
-            [x, y, 1, 1],
-            [x + width, y, -1, 1],
-            [x, y + height, 1, -1],
-            [x + width, y + height, -1, -1],
-          ].forEach(([cx, cy, dx, dy]) => {
+            [x, y],
+            [x + width, y],
+            [x, y + height],
+            [x + width, y + height],
+          ].forEach(([cx, cy], i) => {
             ctx.beginPath();
-            ctx.moveTo(cx + dx * len, cy);
+            ctx.moveTo(cx + (i % 2 === 0 ? len : -len), cy);
             ctx.lineTo(cx, cy);
-            ctx.lineTo(cx, cy + dy * len);
+            ctx.lineTo(cx, cy + (i < 2 ? len : -len));
             ctx.stroke();
           });
         } else {
@@ -152,11 +122,15 @@ export function useFaceCamera() {
     }
 
     init();
+
+    // Este bloco é executado sempre que o componente CameraView é desmontado/escondido
     return () => {
       cancelled = true;
       clearInterval(intervalRef.current);
-      if (videoRef.current?.srcObject) {
-        videoRef.current.srcObject.getTracks().forEach((t) => t.stop());
+
+      // Passo 3: Usamos nossa variável segura para parar a câmera, caso ela exista
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
       }
     };
   }, []);
@@ -165,11 +139,11 @@ export function useFaceCamera() {
     const video = videoRef.current;
     if (!video || !video.videoWidth) throw new Error("Câmera não pronta");
 
-    // Canvas em resolução original para extração precisa do descritor
     const canvas = captureRef.current;
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext("2d");
+
     ctx.save();
     ctx.scale(-1, 1);
     ctx.drawImage(video, -video.videoWidth, 0);
@@ -180,20 +154,30 @@ export function useFaceCamera() {
       .withFaceLandmarks(true)
       .withFaceDescriptor();
 
-    if (!det) throw new Error("Nenhum rosto detectado. Tente novamente.");
+    if (!det)
+      throw new Error("Nenhum rosto detectado na foto. Tente novamente.");
 
-    // Redimensiona para ~40KB antes de salvar no Storage
-    const MAX = 400;
-    const scale = Math.min(MAX / canvas.width, MAX / canvas.height, 1);
+    const MAX_WIDTH = 400;
+    const MAX_HEIGHT = 400;
+    const scale = Math.min(
+      MAX_WIDTH / canvas.width,
+      MAX_HEIGHT / canvas.height,
+      1,
+    );
     const resized = document.createElement("canvas");
     resized.width = Math.round(canvas.width * scale);
     resized.height = Math.round(canvas.height * scale);
     resized
       .getContext("2d")
       .drawImage(canvas, 0, 0, resized.width, resized.height);
+
     const photoDataUrl = resized.toDataURL("image/jpeg", 0.75);
 
     return { descriptor: det.descriptor, photoDataUrl };
+  }, []);
+
+  const compareDescriptors = useCallback((a, b) => {
+    return faceapi.euclideanDistance(a, b);
   }, []);
 
   return {
@@ -204,7 +188,7 @@ export function useFaceCamera() {
     modelsReady,
     faceDetected,
     streamReady,
-    cameraError,
     capture,
+    compareDescriptors,
   };
 }
