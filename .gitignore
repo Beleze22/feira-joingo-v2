@@ -1,0 +1,43 @@
+# ==========================================
+# JOINGO - .gitignore
+# ==========================================
+
+# --- Dependências ---
+# Nunca subimos a pasta node_modules, pois ela é gerada pelo 'npm install'
+node_modules/
+jspm_packages/
+
+# --- Segurança e Variáveis de Ambiente ---
+# [CRÍTICO] Nunca suba o .env. Ele contém suas chaves do Supabase!
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# --- Pastas de Build (Produção) ---
+# Arquivos gerados quando você roda 'npm run build'
+dist/
+build/
+out/
+.next/
+
+# --- Logs de Erro ---
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+*.log
+
+# --- Arquivos do Sistema Operacional ---
+# Coisas que o Windows ou Mac criam sozinhos
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- IDEs e Editores ---
+# Configurações pessoais do seu VS Code ou outro editor
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
