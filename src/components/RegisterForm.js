@@ -1,21 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
+import termsPdf from "../assets/Termos_Desafio_dos_Reflexos_Joingo.pdf";
 
 export function RegisterForm({ photoUrl, onSubmit, onBack, loading }) {
   const [form, setForm] = useState({
-    nome: '', email: '', cpf: '', nascimento: '', telefone: '', conhecia_joingo: '',
+    nome: "",
+    email: "",
+    cpf: "",
+    nascimento: "",
+    telefone: "",
+    conhecia_joingo: "",
   });
 
-  const set = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
+  const [aceitouTermos, setAceitouTermos] = useState(false);
 
-  const formatCPF = v => v.replace(/\D/g, '').slice(0, 11)
-    .replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  const set = (field, value) =>
+    setForm((prev) => ({ ...prev, [field]: value }));
 
-  const formatPhone = v => v.replace(/\D/g, '').slice(0, 11)
-    .replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d{4})$/, '$1-$2');
+  const formatCPF = (v) =>
+    v
+      .replace(/\D/g, "")
+      .slice(0, 11)
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+
+  const formatPhone = (v) =>
+    v
+      .replace(/\D/g, "")
+      .slice(0, 11)
+      .replace(/(\d{2})(\d)/, "($1) $2")
+      .replace(/(\d{5})(\d{4})$/, "$1-$2");
 
   function handleSubmit(e) {
     e.preventDefault();
-    if (!form.nome.trim() || !form.email.trim()) { alert('Nome e e-mail são obrigatórios.'); return; }
+    if (!form.nome.trim() || !form.email.trim()) {
+      alert("Nome e e-mail são obrigatórios.");
+      return;
+    }
+    if (!aceitouTermos) {
+      alert("Você precisa aceitar os termos de participação para continuar.");
+      return;
+    }
     onSubmit(form);
   }
 
@@ -37,23 +62,51 @@ export function RegisterForm({ photoUrl, onSubmit, onBack, loading }) {
 
           <div className="form-group">
             <label className="field-required">Nome completo</label>
-            <input type="text" value={form.nome} onChange={e => set('nome', e.target.value)} placeholder="Seu nome completo" required />
+            <input
+              type="text"
+              value={form.nome}
+              onChange={(e) => set("nome", e.target.value)}
+              placeholder="Seu nome completo"
+              required
+            />
           </div>
           <div className="form-group">
             <label className="field-required">E-mail</label>
-            <input type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="seu@email.com" required />
+            <input
+              type="email"
+              value={form.email}
+              onChange={(e) => set("email", e.target.value)}
+              placeholder="seu@email.com"
+              required
+            />
           </div>
           <div className="form-group">
             <label>CPF</label>
-            <input type="text" value={form.cpf} onChange={e => set('cpf', formatCPF(e.target.value))} placeholder="000.000.000-00" inputMode="numeric" />
+            <input
+              type="text"
+              value={form.cpf}
+              onChange={(e) => set("cpf", formatCPF(e.target.value))}
+              placeholder="000.000.000-00"
+              inputMode="numeric"
+            />
           </div>
           <div className="form-group">
             <label>Data de nascimento</label>
-            <input type="date" value={form.nascimento} onChange={e => set('nascimento', e.target.value)} />
+            <input
+              type="date"
+              value={form.nascimento}
+              onChange={(e) => set("nascimento", e.target.value)}
+            />
           </div>
           <div className="form-group">
             <label>Telefone</label>
-            <input type="tel" value={form.telefone} onChange={e => set('telefone', formatPhone(e.target.value))} placeholder="(11) 99999-9999" inputMode="numeric" />
+            <input
+              type="tel"
+              value={form.telefone}
+              onChange={(e) => set("telefone", formatPhone(e.target.value))}
+              placeholder="(11) 99999-9999"
+              inputMode="numeric"
+            />
           </div>
         </div>
 
@@ -61,7 +114,10 @@ export function RegisterForm({ photoUrl, onSubmit, onBack, loading }) {
           <div className="form-section-title">Sobre a JOINGO</div>
           <div className="form-group">
             <label>Já conhecia a JOINGO antes de hoje?</label>
-            <select value={form.conhecia_joingo} onChange={e => set('conhecia_joingo', e.target.value)}>
+            <select
+              value={form.conhecia_joingo}
+              onChange={(e) => set("conhecia_joingo", e.target.value)}
+            >
               <option value="">Selecione...</option>
               <option value="sim_cliente">Sim, já sou cliente</option>
               <option value="sim_redes">Sim, vi nas redes sociais</option>
@@ -71,10 +127,55 @@ export function RegisterForm({ photoUrl, onSubmit, onBack, loading }) {
           </div>
         </div>
 
-        <button type="submit" className="btn btn-primary" disabled={loading}>
-          {loading ? '⏳ Cadastrando...' : '🎁 Cadastrar e Participar'}
+        {/* Termos de Participação */}
+        <div className="form-section">
+          <div className="form-section-title">Termos de participação</div>
+          <div className="form-group">
+            <a
+              href={termsPdf}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="terms-link"
+            >
+              📄 Ler o Regulamento da Promoção
+            </a>
+          </div>
+          <div className="form-group terms-checkbox-group">
+            <label className="terms-checkbox-label">
+              <input
+                type="checkbox"
+                checked={aceitouTermos}
+                onChange={(e) => setAceitouTermos(e.target.checked)}
+              />
+              <span>
+                Li e aceito os{" "}
+                <a
+                  href={termsPdf}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="terms-inline-link"
+                >
+                  termos de participação
+                </a>{" "}
+                da promoção
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          className="btn btn-primary"
+          disabled={loading || !aceitouTermos}
+        >
+          {loading ? "⏳ Cadastrando..." : "🎁 Cadastrar e Participar"}
         </button>
-        <button type="button" className="btn btn-ghost" onClick={onBack} disabled={loading}>
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={onBack}
+          disabled={loading}
+        >
           Voltar
         </button>
       </form>
