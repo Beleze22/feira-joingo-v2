@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import * as faceapi from "@vladmandic/face-api";
 
-const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model";
+const MODEL_URL = "/models";
 const DETECTION_OPTIONS = new faceapi.TinyFaceDetectorOptions({
   inputSize: 224,
-  scoreThreshold: 0.5,
+  scoreThreshold: 0.4,
 });
 
 let modelsLoaded = false;
@@ -118,7 +118,7 @@ export function useFaceCamera() {
         } else {
           setFaceDetected(false);
         }
-      }, 350);
+      }, 200);
     }
 
     init();

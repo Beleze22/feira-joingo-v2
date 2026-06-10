@@ -3,6 +3,29 @@ import supabase from './supabase';
 const BUCKET = 'fotos-participantes';
 const THRESHOLD = parseFloat(process.env.REACT_APP_FACE_THRESHOLD || '0.5');
 
+// ─── Cache de descritores em memória (evita busca a cada captura) ─────────────
+let _descriptorCache = null;
+let _cacheTimestamp = 0;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
+function invalidateDescriptorCache() {
+  _descriptorCache = null;
+}
+
+async function fetchParticipants() {
+  const now = Date.now();
+  if (_descriptorCache && now - _cacheTimestamp < CACHE_TTL) {
+    return _descriptorCache;
+  }
+  const { data, error } = await supabase
+    .from('participantes')
+    .select('id, nome, email, foto_url, descriptor, total_participacoes');
+  if (error) throw new Error('Erro ao buscar participantes: ' + error.message);
+  _descriptorCache = data;
+  _cacheTimestamp = now;
+  return data;
+}
+
 // ─── Distância euclidiana (mesma usada pelo face-api) ────────────────────────
 function euclideanDistance(a, b) {
   let sum = 0;
@@ -16,11 +39,7 @@ function euclideanDistance(a, b) {
 // ─── Busca todos os participantes e compara descritores localmente ────────────
 // Roda 100% no browser — sem round-trip para backend
 export async function checkDescriptor(descriptor) {
-  const { data: participants, error } = await supabase
-    .from('participantes')
-    .select('id, nome, email, foto_url, descriptor, total_participacoes');
-
-  if (error) throw new Error('Erro ao buscar participantes: ' + error.message);
+  const participants = await fetchParticipants();
 
   let best = null;
   let bestDist = Infinity;
@@ -76,6 +95,7 @@ export async function registerParticipant({ formValues, photoDataUrl, descriptor
     .single();
 
   if (insertError) throw new Error('Erro ao salvar dados: ' + insertError.message);
+  invalidateDescriptorCache();
   return data;
 }
 
