@@ -47,7 +47,7 @@ export function CameraView({ onCapture, onError }) {
     );
   }
 
-  const ready = streamReady && faceDetected && !capturing;
+  const ready = streamReady && !capturing;
 
   return (
     <>
@@ -68,13 +68,13 @@ export function CameraView({ onCapture, onError }) {
       </div>
 
       <div
-        className={`status-box ${faceDetected ? "status-ready" : modelsReady ? "status-idle" : "status-loading"}`}
+        className={`status-box ${streamReady ? "status-ready" : "status-loading"}`}
       >
         {!modelsReady
           ? `⏳ ${modelStatus}`
-          : faceDetected
-            ? "✅ Rosto detectado! Clique para verificar."
-            : "🔍 Centralize seu rosto na câmera..."}
+          : streamReady
+            ? "✅ Câmera pronta! Clique para tirar foto."
+            : "⏳ Iniciando câmera..."}
       </div>
 
       <button
